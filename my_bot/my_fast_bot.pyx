@@ -11,8 +11,8 @@ cimport numpy as np
 from cpython cimport bool
 import interface as bbox
 cimport interface as bbox
-from libc.stdlib cimport rand, RAND_MAX
-from scipy.linalg cimport cython_blas as blas
+import random
+random.seed(113)
 
 # without step: Level score= 2308.362061
 # with batch sgd: Level score= -9512.807617
@@ -26,6 +26,9 @@ from scipy.linalg cimport cython_blas as blas
 # with delay (gamma = 0.95, n_seps = 100): -10427.183594
 # with delay (gamma = 0.95, n_seps = 500): -10407.957031
 # with delay (gamma = 0.8, n_seps = 100): -11011.115234
+# with delay (gamma = 0.9, n_seps = 100) eps: 0.1: -8906.701172
+# with delay (gamma = 0.9, n_seps = 100) eps: 0.2: -8355.704102
+# with delay (gamma = 0.9, n_seps = 100) eps: 0.3: -9242.856445
 
 
 ctypedef float STATE_ELEMENT
@@ -78,7 +81,7 @@ cdef class Predictor:
         self.gamma = 0.9
         self.n_steps_delay = 100
         self.train_batch_size = 100
-        self.eps = 0.2
+        self.eps = 0.3
         self.global_state_num = 0
 
         self.env_state_size, self.n_actions, self.max_time = \
@@ -217,12 +220,14 @@ cdef class Predictor:
         return result + intercept
 
     cdef get_action(self):
+        r = random
+        if r.random() <= self.eps:
+            return r.randrange(self.n_actions)
         cdef:
             ACTION best_act = -1
             SCORE best_val = -1e9
             ACTION act
             SCORE val
-
         for act in range(self.n_actions):
             val = self.calc_reg_for_action(act)
             if val > best_val:
