@@ -12,7 +12,8 @@ from scipy.linalg cimport cython_blas as blas
 
 #  without step: Level score= 2308.362061
 # with batch sgd: Level score= -9512.807617
-# after optimization: Level score= -14771.977539
+# predict score: Level score= -13255.810547
+# predict diff of score: Level score= -10842.875000
 
 
 ctypedef float STATE_ELEMENT
@@ -45,6 +46,7 @@ cdef class Predictor:
         object action_predictors
 
         NP_STATE_ELEMENT_t[:,:] state_history
+        NP_SCORE_t[:] reward_history
 
         NP_STATE_ELEMENT_t[:] current_state
         int current_state_num
@@ -75,6 +77,9 @@ cdef class Predictor:
         self.state_history = np.empty(
             (self.state_history_size, self.state_size),
             dtype=NP_STATE_ELEMENT)
+        self.reward_history = np.empty(
+            self.state_history_size,
+            dtype=NP_SCORE)
 
         self.actions_training_examples= np.empty(
             (self.n_actions, self.train_batch_size, self.state_size),
@@ -117,7 +122,7 @@ cdef class Predictor:
             ACTION_RESULT result = bbox.c_do_action(action)
             SCORE new_score = bbox.c_get_score()
             SCORE score_diff = new_score - old_score
-        self.remember_action_result(action, new_score)
+        self.remember_action_result(action, score_diff)
         return result
 
     @cython.boundscheck(False)
@@ -140,7 +145,6 @@ cdef class Predictor:
         self.actions_training_examples_positions[action] = next_pos
 
     cdef train_predictor_for_action(self, ACTION action):
-        return
         cdef:
             predictor = self.action_predictors[action]
             NP_STATE_ELEMENT_t[:, :] train_reatures = \
@@ -163,7 +167,7 @@ cdef class Predictor:
             SCORE result = 0
             int i = 0
         for i in range(self.state_size):
-            result += coef[i]
+            result += coef[i] * self.current_state[i]
         return result + intercept
 
     cdef get_action(self):
@@ -178,7 +182,6 @@ cdef class Predictor:
             if val > best_val:
                 best_val = val
                 best_act = act
-
         return best_act
 
     cdef void get_next_state(self):
