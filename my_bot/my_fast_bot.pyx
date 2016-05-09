@@ -36,6 +36,16 @@ random.seed(113)
 # with delay (gamma = 0.9, n_seps = 100) eps: (1: 1000, 0.1: 100000): -10193.726562
 # with delay (gamma = 0.9, n_seps = 100) eps: (1: 1000, 0.1: 5000): -9599.239258
 
+# with delay (gamma = 0.9)
+# eps=0.1, 1 state, batch size=100: -8509.427734
+# eps=0.1, 4 states, batch size=100: -8355.704102
+# eps=0.1, 6 states, batch size=100: -8009.576660
+# eps=0.1, 6 states, batch size=50: -7965.073730
+# eps=0.1, 6 states, batch size=200: -10151.086914
+# eps=0.1, 10 states, batch size=100: -10517.896484
+# eps=0.1, 10 states, batch size=200: -9304.412109
+# eps=0.1, 10 states, batch size=300: -11770.303711
+
 
 ctypedef float STATE_ELEMENT
 ctypedef np.float_t NP_STATE_ELEMENT_t
@@ -82,10 +92,10 @@ cdef class Predictor:
 
     def __init__(self):
         # Algorithm config
-        self.n_steps_in_state = 4
+        self.n_steps_in_state = 6
         self.gamma = 0.9
         self.n_steps_delay = 100
-        self.train_batch_size = 100
+        self.train_batch_size = 50
         self.global_state_num = 0
 
         self.env_state_size, self.n_actions, self.max_time = \
@@ -236,6 +246,7 @@ cdef class Predictor:
             float lower_bound = 0.2
             int start_lowering_pos = 1000
             int end_lowering_pos = 100000
+        return 0.2
         if self.global_state_num < start_lowering_pos:
             return 1
         if self.global_state_num > end_lowering_pos:
