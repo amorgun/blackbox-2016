@@ -29,6 +29,12 @@ random.seed(113)
 # with delay (gamma = 0.9, n_seps = 100) eps: 0.1: -8906.701172
 # with delay (gamma = 0.9, n_seps = 100) eps: 0.2: -8355.704102
 # with delay (gamma = 0.9, n_seps = 100) eps: 0.3: -9242.856445
+# with delay (gamma = 0.9, n_seps = 100) eps: (1: 1000, 0.2: 50000): -9242.856445
+# with delay (gamma = 0.9, n_seps = 100) eps: (1: 1000, 0.1: 50000): -10153.869141
+# with delay (gamma = 0.9, n_seps = 100) eps: (1: 10000, 0.2: 100000): -10193.726562
+# with delay (gamma = 0.9, n_seps = 100) eps: (1: 1000, 0.2: 100000): -8991.229492
+# with delay (gamma = 0.9, n_seps = 100) eps: (1: 1000, 0.1: 100000): -10193.726562
+# with delay (gamma = 0.9, n_seps = 100) eps: (1: 1000, 0.1: 5000): -9599.239258
 
 
 ctypedef float STATE_ELEMENT
@@ -57,7 +63,6 @@ cdef class Predictor:
         float gamma # Cкорость затухания Q
         int n_steps_delay # Колиество последних действий, по которым считается Q
         int history_size # Backlog для восстановления предыдущих состоний
-        float eps # Параметр эпсилон-жадной стратегии
 
         # Algorithm implementation
         object action_predictors
@@ -81,14 +86,17 @@ cdef class Predictor:
         self.gamma = 0.9
         self.n_steps_delay = 100
         self.train_batch_size = 100
-        self.eps = 0.3
         self.global_state_num = 0
 
         self.env_state_size, self.n_actions, self.max_time = \
             self.get_env_info()
 
         self.action_predictors = [
-            SGDRegressor(warm_start=True, random_state=i)
+            SGDRegressor(
+                warm_start=True,
+                random_state=i,
+                # learning_rate="optimal"
+            )
             for i in range(self.n_actions)]
 
         self.state_size = self.n_steps_in_state * self.env_state_size
@@ -219,9 +227,27 @@ cdef class Predictor:
             result += coef[i] * self.current_state[i]
         return result + intercept
 
+    cdef float get_eps(self):
+        """
+        Параметр эпсилон-жадной стратегии
+        """
+        cdef:
+            float upper_bound = 1
+            float lower_bound = 0.2
+            int start_lowering_pos = 1000
+            int end_lowering_pos = 100000
+        if self.global_state_num < start_lowering_pos:
+            return 1
+        if self.global_state_num > end_lowering_pos:
+            return 0.2
+        return (self.global_state_num - start_lowering_pos) \
+               * (upper_bound - lower_bound) \
+               / (end_lowering_pos - start_lowering_pos)
+
+
     cdef get_action(self):
         r = random
-        if r.random() <= self.eps:
+        if r.random() <= self.get_eps():
             return r.randrange(self.n_actions)
         cdef:
             ACTION best_act = -1
