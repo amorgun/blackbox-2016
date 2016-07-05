@@ -1,7 +1,7 @@
 # blackbox 2016
 ## Что в этом репозитории? 
 Моё решение [BlackBox Challenge 2016](http://blackboxchallenge.com/home/).  
-В итоге я занял [25 место](http://blackboxchallenge.com/leaders/).  
+В итоге я занял [24 место](http://blackboxchallenge.com/finals/).  
 
 ## Решение
 Я [довольно долго](https://github.com/amorgun/blackbox-2016#Неудачные решения) пытался построить решение с помошью машинного обучения и честного reinforcement learning, но все мои решения оказывались намного хуже базового regression bot-а. Поэтому я решил улучшить коэффициенты, чтобы хотя бы превзойти baseline.  
